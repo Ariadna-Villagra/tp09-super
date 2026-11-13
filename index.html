@@ -1,0 +1,2305 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Súper Barrio - Control de stock</title>
+
+  <!-- Estilos integrados directamente en el index.html -->
+  <style>
+/* ==========================================================
+   Súper Barrio - Hoja de estilos
+   Mobile first: primero el celular, después 768 px en adelante
+   ========================================================== */
+
+/* 1. FUENTES: Poppins (títulos) e Inter (texto) desde Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Poppins:wght@500;600;700&display=swap');
+
+/* 2. VARIABLES: colores, fuentes y medidas que se reutilizan */
+:root {
+  /* Color principal (amarillo mostaza) */
+  --color-principal: #D99A00;
+  --color-principal-oscuro: #B07D00;
+  --color-principal-claro: #FFF4D6;
+
+  /* Fondos y textos */
+  --color-fondo: #F4F5F7;
+  --color-tarjeta: #FFFFFF;
+  --color-texto: #1F2933;
+  --color-texto-suave: #6B7280;
+  --color-borde: #E3E6EA;
+
+  /* Estados del stock */
+  --color-normal: #2E9E5B;        /* verde */
+  --color-bajo: #F28C28;          /* naranja */
+  --color-sin-stock: #D92D20;     /* rojo */
+  --color-normal-claro: #E3F5EA;
+  --color-bajo-claro: #FEEBD6;
+  --color-sin-stock-claro: #FDE4E1;
+
+  /* Tipografías (system-ui por si no hay internet) */
+  --fuente-titulos: "Poppins", system-ui, sans-serif;
+  --fuente-texto: "Inter", system-ui, sans-serif;
+
+  /* Bordes y sombras */
+  --radio: 14px;
+  --sombra-suave: 0 2px 8px rgba(31, 41, 51, 0.08);
+  --sombra-elevada: 0 6px 16px rgba(31, 41, 51, 0.14);
+}
+
+/* 3. BASE: reinicio y estilos generales */
+*,
+*::before,
+*::after {
+  box-sizing: border-box; /* el padding no agranda los elementos */
+}
+
+body {
+  margin: 0;
+  background: var(--color-fondo);
+  color: var(--color-texto);
+  font-family: var(--fuente-texto);
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+h1, h2, h3 {
+  font-family: var(--fuente-titulos);
+  margin: 0 0 0.75rem;
+  line-height: 1.2;
+}
+
+/* Clase para ocultar secciones (la usaremos con JS más adelante) */
+.oculta {
+  display: none;
+}
+
+/* 4. ENCABEZADO */
+#encabezado {
+  background: var(--color-principal);
+  color: #2B1F00;
+  padding: 1.25rem 1rem;
+  box-shadow: var(--sombra-suave);
+}
+
+#encabezado h1 {
+  margin: 0;
+  font-size: 1.75rem;
+}
+
+#encabezado h1::before {
+  content: "🛒 ";
+}
+
+#encabezado p {
+  margin: 0.25rem 0 1rem;
+}
+
+#respaldo {
+  display: flex;
+  gap: 0.5rem;
+}
+
+/* Botones de Exportar e Importar: blancos para que se vean sobre el mostaza */
+#respaldo button {
+  background: #FFFFFF;
+  color: var(--color-texto);
+}
+
+#respaldo button:hover {
+  background: var(--color-principal-claro);
+}
+
+#botonExportar::before { content: "📤 "; }
+#botonImportar::before { content: "📥 "; }
+
+/* El input de archivo se oculta: lo activa el botón Importar con JS */
+#archivoImportar {
+  display: none;
+}
+
+/* 5. MENÚ: 2 columnas en el celular */
+#menu {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.5rem;
+  padding: 1rem;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+#menu button {
+  background: var(--color-tarjeta);
+  color: var(--color-texto);
+  border: 1px solid var(--color-borde);
+}
+
+#menu button:hover {
+  background: var(--color-principal-claro);
+  border-color: var(--color-principal);
+}
+
+/* Botón de la sección activa (le pondremos la clase "activo" con JS) */
+#menu button.activo {
+  background: var(--color-principal);
+  border-color: var(--color-principal);
+}
+
+/* Íconos con emojis en el menú */
+#menu button[data-seccion="productos"]::before   { content: "📦 "; }
+#menu button[data-seccion="movimientos"]::before { content: "🔄 "; }
+#menu button[data-seccion="alertas"]::before     { content: "🔔 "; }
+#menu button[data-seccion="categorias"]::before  { content: "🏷️ "; }
+
+/* Contador de alertas: círculo rojo con número */
+#contadorAlertas {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.5rem;
+  height: 1.5rem;
+  padding: 0 0.35rem;
+  margin-left: 0.4rem;
+  border-radius: 999px;
+  background: var(--color-sin-stock);
+  color: #FFFFFF;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+/* 6. CONTENEDOR PRINCIPAL */
+main {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 1rem 1rem;
+}
+
+section {
+  margin-bottom: 2rem;
+}
+
+/* Íconos en los títulos de cada sección */
+#seccion-productos h2::before   { content: "📦 "; }
+#seccion-movimientos h2::before { content: "🔄 "; }
+#seccion-alertas h2::before     { content: "🔔 "; }
+#seccion-categorias h2::before  { content: "🏷️ "; }
+
+/* 7. FORMULARIOS: tarjetas con bordes redondeados y sombra suave */
+form {
+  display: grid;
+  grid-template-columns: 1fr;   /* una columna en el celular */
+  gap: 1rem;
+  background: var(--color-tarjeta);
+  border-radius: var(--radio);
+  box-shadow: var(--sombra-suave);
+  padding: 1.25rem;
+  margin-bottom: 1.5rem;
+}
+
+label {
+  display: block;
+  font-size: 0.9rem;
+  font-weight: 500;
+  margin-bottom: 0.3rem;
+}
+
+input,
+select,
+textarea {
+  width: 100%;
+  padding: 0.65rem 0.8rem;
+  border: 1px solid var(--color-borde);
+  border-radius: 10px;
+  background: #FFFFFF;
+  color: var(--color-texto);
+  font-family: var(--fuente-texto);
+  font-size: 1rem;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  outline: 2px solid var(--color-principal);
+  outline-offset: 1px;
+  border-color: var(--color-principal);
+}
+
+/* 8. BOTONES con efecto hover (cambio de color y leve elevación) */
+button {
+  padding: 0.7rem 1.2rem;
+  border: none;
+  border-radius: 10px;
+  background: var(--color-principal);
+  color: #2B1F00;
+  font-family: var(--fuente-texto);
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: var(--sombra-suave);
+  transition: background-color 0.2s, transform 0.2s, box-shadow 0.2s;
+}
+
+button:hover {
+  background: var(--color-principal-oscuro);
+  transform: translateY(-2px);
+  box-shadow: var(--sombra-elevada);
+}
+
+button:active {
+  transform: translateY(0);
+}
+
+/* Botón secundario (Limpiar): blanco con borde */
+button[type="reset"] {
+  background: #FFFFFF;
+  color: var(--color-texto);
+  border: 1px solid var(--color-borde);
+}
+
+button[type="reset"]:hover {
+  background: var(--color-principal-claro);
+}
+
+/* 9. FILTROS DE PRODUCTOS: también como tarjeta */
+#filtrosProductos {
+  display: grid;
+  gap: 0.35rem;
+  background: var(--color-tarjeta);
+  border-radius: var(--radio);
+  box-shadow: var(--sombra-suave);
+  padding: 1.25rem;
+  margin-bottom: 1.5rem;
+}
+
+#filtrosProductos label {
+  margin: 0.6rem 0 0;
+}
+
+#filtrosProductos label:first-child {
+  margin-top: 0;
+}
+
+/* 10. TABLAS: con scroll horizontal en el celular */
+table {
+  display: block;
+  overflow-x: auto;
+  border-collapse: separate;
+  border-spacing: 0;
+  background: var(--color-tarjeta);
+  border-radius: var(--radio);
+  box-shadow: var(--sombra-suave);
+}
+
+th {
+  background: var(--color-principal-claro);
+  text-align: left;
+  font-family: var(--fuente-titulos);
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+th,
+td {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--color-borde);
+}
+
+tbody tr:hover {
+  background: #FFFBEF;
+}
+
+/* 11. LISTAS: cada elemento es una tarjeta */
+ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: 1fr;   /* una columna en el celular */
+  gap: 0.75rem;
+}
+
+ul li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--color-tarjeta);
+  border-radius: var(--radio);
+  box-shadow: var(--sombra-suave);
+  padding: 0.9rem 1.1rem;
+}
+
+/* Alertas: borde de color según la gravedad */
+#listaAlertas li {
+  border-left: 6px solid var(--color-bajo);
+}
+
+#listaAlertas li.alerta-bajo      { border-left-color: var(--color-bajo); }
+#listaAlertas li.alerta-sin-stock { border-left-color: var(--color-sin-stock); }
+
+/* 12. INDICADORES DE ESTADO DEL STOCK (los pondrá JS en cada producto) */
+.estado {
+  display: inline-block;
+  padding: 0.2rem 0.7rem;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  font-size: 0.85rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.estado-normal {
+  background: var(--color-normal-claro);
+  border-color: var(--color-normal);
+}
+.estado-normal::before { content: "🟢 "; }
+
+.estado-bajo {
+  background: var(--color-bajo-claro);
+  border-color: var(--color-bajo);
+}
+.estado-bajo::before { content: "🟠 "; }
+
+.estado-sin-stock {
+  background: var(--color-sin-stock-claro);
+  border-color: var(--color-sin-stock);
+}
+.estado-sin-stock::before { content: "🔴 "; }
+
+/* 12b. MOVIMIENTOS: mensaje del producto y filtro del historial */
+#infoProductoMovimiento {
+  margin: 0.4rem 0 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+#infoProductoMovimiento.info-no-encontrado {
+  color: var(--color-sin-stock);
+}
+
+#filtrosMovimientos {
+  background: var(--color-tarjeta);
+  border-radius: var(--radio);
+  box-shadow: var(--sombra-suave);
+  padding: 1.25rem;
+  margin-bottom: 1rem;
+}
+
+/* 12c. ALERTAS: contador en cero y tarjetas */
+#contadorAlertas.contador-cero {
+  background: var(--color-texto-suave);
+}
+
+#listaAlertas li {
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.alerta-encabezado {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 0.6rem;
+}
+
+.alerta-codigo {
+  color: var(--color-texto-suave);
+  font-size: 0.85rem;
+}
+
+.alerta-datos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
+  margin: 0;
+}
+
+.alerta-sugerida {
+  font-weight: 700;
+}
+
+/* Botón de imprimir y área de impresión (oculta en pantalla) */
+#botonImprimirReposicion {
+  margin-bottom: 1rem;
+}
+
+#botonImprimirReposicion::before {
+  content: "🖨️ ";
+}
+
+#areaImpresion {
+  display: none;
+}
+
+/* Mensaje "todo en orden": ocupa todo el ancho, con borde verde */
+#listaAlertas li.alerta-vacia {
+  grid-column: 1 / -1;
+  flex-direction: row;
+  align-items: center;
+  border-left-color: var(--color-normal);
+}
+
+/* 13. PIE DE PÁGINA */
+footer {
+  text-align: center;
+  color: var(--color-texto-suave);
+  font-size: 0.85rem;
+  padding: 1.5rem 1rem;
+}
+
+/* ==========================================================
+   14. DESDE 768 px: tablet y computadora (dos columnas)
+   ========================================================== */
+@media (min-width: 768px) {
+
+  /* Encabezado con el título a la izquierda y los botones a la derecha */
+  #encabezado {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.25rem 2rem;
+  }
+
+  #encabezado p {
+    margin-bottom: 0;
+  }
+
+  /* Menú en una sola fila de 4 botones */
+  #menu {
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  /* Formularios en dos columnas */
+  form {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  form > button[type="submit"] { grid-column: 1; }
+  form > button[type="reset"]  { grid-column: 2; }
+
+  /* La observación ocupa todo el ancho */
+  #formularioMovimiento > div:has(textarea) {
+    grid-column: 1 / -1;
+  }
+
+  /* El formulario de categorías va en una sola fila */
+  #formularioCategoria {
+    display: flex;
+    align-items: flex-end;
+    gap: 1rem;
+  }
+
+  #formularioCategoria label {
+    margin: 0;
+    white-space: nowrap;
+  }
+
+  /* Filtros: etiqueta a la izquierda y campo a la derecha */
+  #filtrosProductos {
+    grid-template-columns: auto 1fr;
+    align-items: center;
+    gap: 0.75rem 1rem;
+  }
+
+  #filtrosProductos label {
+    margin: 0;
+  }
+
+  /* Listas en dos columnas */
+  ul {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  /* Las tablas ocupan todo el ancho */
+  table {
+    display: table;
+    width: 100%;
+    overflow: hidden;
+  }
+}
+
+/* ==========================================================
+   15. IMPRESIÓN: solo sale la lista de reposición
+   ========================================================== */
+@media print {
+  /* Ocultamos todo lo que está directamente dentro del body, menos el área de impresión */
+  body > *:not(#areaImpresion) {
+    display: none !important;
+  }
+
+  #areaImpresion {
+    display: block;
+  }
+
+  /* Colores simples para ahorrar tinta */
+  body {
+    background: #FFFFFF;
+    color: #000000;
+  }
+
+  #areaImpresion h1 {
+    font-size: 1.5rem;
+    margin-bottom: 0.25rem;
+  }
+
+  #areaImpresion p {
+    margin: 0 0 1rem;
+  }
+
+  #tablaReposicion {
+    display: table;
+    width: 100%;
+    overflow: visible;
+    border-collapse: collapse;
+    border-radius: 0;
+    box-shadow: none;
+    background: #FFFFFF;
+  }
+
+  #tablaReposicion th,
+  #tablaReposicion td {
+    border: 1px solid #000000;
+    padding: 0.6rem 0.8rem;
+    background: #FFFFFF;
+    color: #000000;
+  }
+
+  /* Cantidad y casillero centrados */
+  #tablaReposicion th:nth-child(n+2),
+  #tablaReposicion td:nth-child(n+2) {
+    text-align: center;
+  }
+
+  /* Una fila no se corta entre dos hojas */
+  #tablaReposicion tr {
+    break-inside: avoid;
+  }
+
+  /* Casillero para tildar: un cuadrado vacío con borde */
+  .casillero {
+    display: inline-block;
+    width: 1.4rem;
+    height: 1.4rem;
+    border: 2px solid #000000;
+  }
+}
+  </style>
+</head>
+<body>
+
+  <!-- ===== ENCABEZADO ===== -->
+  <header id="encabezado">
+    <h1>Súper Barrio</h1>
+    <p>Sistema de control de stock</p>
+
+    <!-- Botones para guardar y recuperar los datos como archivo -->
+    <div id="respaldo">
+      <button type="button" id="botonExportar">Exportar</button>
+      <button type="button" id="botonImportar">Importar</button>
+      <!-- Este input queda oculto más adelante; el botón "Importar" lo va a activar -->
+      <input type="file" id="archivoImportar" accept=".json">
+    </div>
+  </header>
+
+  <!-- ===== MENÚ PRINCIPAL ===== -->
+  <nav id="menu">
+    <!-- data-seccion indica a qué sección lleva cada botón (lo usaremos con JS) -->
+    <button type="button" data-seccion="productos">Productos</button>
+    <button type="button" data-seccion="movimientos">Movimientos</button>
+    <button type="button" data-seccion="alertas">
+      Alertas <span id="contadorAlertas">0</span>
+    </button>
+    <button type="button" data-seccion="categorias">Categorías</button>
+  </nav>
+
+  <main>
+
+    <!-- ===== SECCIÓN PRODUCTOS ===== -->
+    <section id="seccion-productos">
+      <h2>Productos</h2>
+
+      <!-- Formulario para cargar un producto nuevo -->
+      <form id="formularioProducto">
+        <div>
+          <label for="productoCodigo">Código</label>
+          <input type="text" id="productoCodigo" required>
+        </div>
+
+        <div>
+          <label for="productoNombre">Nombre</label>
+          <input type="text" id="productoNombre" required>
+        </div>
+
+        <div>
+          <label for="productoCategoria">Categoría</label>
+          <!-- Las opciones se van a cargar con JS desde las categorías guardadas -->
+          <select id="productoCategoria" required>
+            <option value="">Elegí una categoría</option>
+          </select>
+        </div>
+
+        <div>
+          <label for="productoUnidad">Unidad</label>
+          <select id="productoUnidad" required>
+            <option value="unidad">Unidad</option>
+            <option value="kg">Kilogramo</option>
+            <option value="litro">Litro</option>
+            <option value="paquete">Paquete</option>
+            <option value="caja">Caja</option>
+          </select>
+        </div>
+
+        <div>
+          <label for="productoPrecio">Precio</label>
+          <input type="number" id="productoPrecio" min="0" step="0.01" required>
+        </div>
+
+        <div>
+          <label for="productoStockInicial">Stock inicial</label>
+          <input type="number" id="productoStockInicial" min="0" step="1" required>
+        </div>
+
+        <div>
+          <label for="productoStockMinimo">Stock mínimo</label>
+          <input type="number" id="productoStockMinimo" min="0" step="1" required>
+        </div>
+
+        <button type="submit">Guardar producto</button>
+        <button type="reset">Limpiar</button>
+      </form>
+
+      <!-- Buscador y filtros -->
+      <div id="filtrosProductos">
+        <label for="buscadorProductos">Buscar</label>
+        <input type="search" id="buscadorProductos" placeholder="Nombre o código">
+
+        <label for="filtroCategoria">Categoría</label>
+        <select id="filtroCategoria">
+          <option value="">Todas</option>
+        </select>
+
+        <label for="filtroEstado">Estado</label>
+        <select id="filtroEstado">
+          <option value="">Todos</option>
+          <option value="normal">Normal</option>
+          <option value="bajo">Stock bajo</option>
+          <option value="sin-stock">Sin stock</option>
+        </select>
+      </div>
+
+      <!-- Tabla de productos (el cuerpo se llena con JS) -->
+      <table id="tablaProductos">
+        <thead>
+          <tr>
+            <th>Código</th>
+            <th>Nombre</th>
+            <th>Categoría</th>
+            <th>Precio</th>
+            <th>Stock</th>
+            <th>Stock mínimo</th>
+            <th>Estado</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="cuerpoTablaProductos">
+          <!-- Acá van a aparecer las filas -->
+        </tbody>
+      </table>
+    </section>
+
+    <!-- ===== SECCIÓN MOVIMIENTOS ===== -->
+    <section id="seccion-movimientos">
+      <h2>Movimientos</h2>
+
+      <form id="formularioMovimiento">
+        <div>
+          <label for="movimientoCodigo">Código del producto</label>
+          <input type="text" id="movimientoCodigo" list="listaCodigos" required>
+          <!-- Sugerencias de códigos (se cargan con JS) -->
+          <datalist id="listaCodigos"></datalist>
+          <!-- Acá se muestra el nombre y el stock actual del producto -->
+          <p id="infoProductoMovimiento"></p>
+        </div>
+
+        <div>
+          <label for="movimientoTipo">Tipo</label>
+          <select id="movimientoTipo" required>
+            <option value="entrada">Entrada</option>
+            <option value="salida">Salida</option>
+          </select>
+        </div>
+
+        <div>
+          <label for="movimientoMotivo">Motivo</label>
+          <select id="movimientoMotivo" required>
+            <option value="compra">Compra a proveedor</option>
+            <option value="venta">Venta</option>
+            <option value="devolucion">Devolución</option>
+            <option value="vencimiento">Vencimiento o rotura</option>
+            <option value="ajuste">Ajuste de inventario</option>
+          </select>
+        </div>
+
+        <div>
+          <label for="movimientoCantidad">Cantidad</label>
+          <input type="number" id="movimientoCantidad" min="1" step="1" required>
+        </div>
+
+        <div>
+          <label for="movimientoFecha">Fecha</label>
+          <input type="date" id="movimientoFecha" required>
+        </div>
+
+        <div>
+          <label for="movimientoObservacion">Observación</label>
+          <textarea id="movimientoObservacion" rows="3"></textarea>
+        </div>
+
+        <button type="submit">Registrar movimiento</button>
+        <button type="reset">Limpiar</button>
+      </form>
+
+      <!-- Historial de movimientos -->
+      <h3>Historial</h3>
+
+      <div id="filtrosMovimientos">
+        <label for="filtroMovimientoProducto">Filtrar por producto</label>
+        <select id="filtroMovimientoProducto">
+          <option value="">Todos los productos</option>
+        </select>
+      </div>
+
+      <table id="tablaMovimientos">
+        <thead>
+          <tr>
+            <th>Fecha</th>
+            <th>Código</th>
+            <th>Producto</th>
+            <th>Tipo</th>
+            <th>Motivo</th>
+            <th>Cantidad</th>
+            <th>Observación</th>
+          </tr>
+        </thead>
+        <tbody id="cuerpoTablaMovimientos">
+          <!-- Acá van a aparecer las filas -->
+        </tbody>
+      </table>
+    </section>
+
+    <!-- ===== SECCIÓN ALERTAS ===== -->
+    <section id="seccion-alertas">
+      <h2>Alertas</h2>
+      <p>Productos con stock bajo o sin stock.</p>
+      <button type="button" id="botonImprimirReposicion">Imprimir lista de reposición</button>
+      <ul id="listaAlertas">
+        <!-- Acá van a aparecer las alertas -->
+      </ul>
+    </section>
+
+    <!-- ===== SECCIÓN CATEGORÍAS ===== -->
+    <section id="seccion-categorias">
+      <h2>Categorías</h2>
+
+      <form id="formularioCategoria">
+        <label for="categoriaNombre">Nombre de la categoría</label>
+        <input type="text" id="categoriaNombre" required>
+        <button type="submit">Agregar categoría</button>
+      </form>
+
+      <ul id="listaCategorias">
+        <!-- Acá van a aparecer las categorías -->
+      </ul>
+    </section>
+
+  </main>
+
+  <footer>
+    <p>Súper Barrio (negocio ficticio) - Proyecto de práctica</p>
+  </footer>
+
+  <!-- Área que solo se ve al imprimir la lista de reposición -->
+  <div id="areaImpresion">
+    <h1>Súper Barrio - Lista de reposición</h1>
+    <p id="fechaListaReposicion"></p>
+    <table id="tablaReposicion">
+      <thead>
+        <tr>
+          <th>Producto</th>
+          <th>Cantidad sugerida</th>
+          <th>Repuesto</th>
+        </tr>
+      </thead>
+      <tbody id="cuerpoTablaReposicion">
+        <!-- Las filas se arman con JS justo antes de imprimir -->
+      </tbody>
+    </table>
+  </div>
+
+  <!-- JavaScript integrado directamente en el index.html (al final, para que el HTML ya esté cargado) -->
+  <script>
+// ============================================================
+// REGISTRO DE USO DE IA
+// (Reemplazá este bloque por tu propio comentario de registro de IA)
+// ============================================================
+
+
+// ============================================================
+// 1. DATOS DE LA APLICACIÓN
+// ============================================================
+
+// Clave con la que se guardan todos los datos en localStorage
+const CLAVE_ALMACENAMIENTO = "stock-datos";
+
+// Los tres arrays principales (al arrancar están vacíos)
+// categorias:  { id, nombre }
+// productos:   { codigo, nombre, categoriaId, unidad, precio, stockInicial, stockActual, stockMinimo }
+// movimientos: { id, codigo, tipo, motivo, cantidad, fecha, observacion }
+let categorias = [];
+let productos = [];
+let movimientos = [];
+
+// Carga los datos de ejemplo (todos ficticios)
+function crearDatosIniciales() {
+  categorias = [
+    { id: 1, nombre: "Almacén" },
+    { id: 2, nombre: "Lácteos" },
+    { id: 3, nombre: "Limpieza" },
+    { id: 4, nombre: "Bebidas" }
+  ];
+
+  // Códigos de 13 dígitos que empiezan con 779
+  productos = [
+    { codigo: "7790001000011", nombre: "Fideos tirabuzón 500 g", categoriaId: 1, unidad: "paquete", precio: 1450.50, stockInicial: 40, stockActual: 40, stockMinimo: 10 },
+    { codigo: "7790001000028", nombre: "Arroz largo fino 1 kg",   categoriaId: 1, unidad: "paquete", precio: 1890.00, stockInicial: 25, stockActual: 25, stockMinimo: 10 },
+    { codigo: "7790002000015", nombre: "Leche entera 1 L",        categoriaId: 2, unidad: "litro",   precio: 1250.00, stockInicial: 60, stockActual: 60, stockMinimo: 20 },
+    { codigo: "7790002000022", nombre: "Yogur natural 190 g",     categoriaId: 2, unidad: "unidad",  precio: 780.00,  stockInicial: 8,  stockActual: 8,  stockMinimo: 12 },
+    { codigo: "7790003000019", nombre: "Detergente 750 ml",       categoriaId: 3, unidad: "unidad",  precio: 2100.00, stockInicial: 15, stockActual: 15, stockMinimo: 6 },
+    { codigo: "7790003000026", nombre: "Lavandina 1 L",           categoriaId: 3, unidad: "litro",   precio: 950.00,  stockInicial: 0,  stockActual: 0,  stockMinimo: 8 },
+    { codigo: "7790004000013", nombre: "Agua mineral 2 L",        categoriaId: 4, unidad: "unidad",  precio: 1100.00, stockInicial: 48, stockActual: 48, stockMinimo: 24 },
+    { codigo: "7790004000020", nombre: "Gaseosa cola 2,25 L",     categoriaId: 4, unidad: "unidad",  precio: 2300.00, stockInicial: 30, stockActual: 30, stockMinimo: 12 }
+  ];
+
+  movimientos = [];
+}
+
+// Guarda los tres arrays juntos en localStorage (como texto JSON)
+function guardarDatos() {
+  const datos = { categorias, productos, movimientos };
+  localStorage.setItem(CLAVE_ALMACENAMIENTO, JSON.stringify(datos));
+}
+
+// Lee los datos guardados; si no hay (o están dañados), carga los de ejemplo
+function cargarDatos() {
+  try {
+    const texto = localStorage.getItem(CLAVE_ALMACENAMIENTO);
+
+    if (texto) {
+      const datos = JSON.parse(texto);
+
+      // Verificamos que los tres sean arrays antes de usarlos
+      if (Array.isArray(datos.categorias) &&
+          Array.isArray(datos.productos) &&
+          Array.isArray(datos.movimientos)) {
+        categorias = datos.categorias;
+        productos = datos.productos;
+        movimientos = datos.movimientos;
+        return;
+      }
+    }
+  } catch (error) {
+    console.error("No se pudieron leer los datos guardados:", error);
+  }
+
+  // Si llegamos acá, no había datos válidos
+  crearDatosIniciales();
+  guardarDatos();
+}
+
+
+// ============================================================
+// 2. FUNCIONES AUXILIARES
+// ============================================================
+
+// Deja el texto en minúsculas, sin tildes y sin espacios sobrantes
+// (así "Lácteos" y "lacteos " se consideran el mismo nombre)
+function normalizarTexto(texto) {
+  return texto
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+
+// Devuelve un id nuevo: el mayor que existe más 1
+function generarId(lista) {
+  let mayor = 0;
+  for (const elemento of lista) {
+    if (elemento.id > mayor) {
+      mayor = elemento.id;
+    }
+  }
+  return mayor + 1;
+}
+
+// Cuenta cuántos productos pertenecen a una categoría
+function contarProductosDeCategoria(idCategoria) {
+  return productos.filter(function (producto) {
+    return producto.categoriaId === idCategoria;
+  }).length;
+}
+
+
+// ============================================================
+// 3. LÓGICA DE CATEGORÍAS (alta, edición y baja)
+// ============================================================
+
+// Revisa el nombre. Devuelve el mensaje de error, o "" si está todo bien.
+// idIgnorado sirve al editar: la categoría no se compara consigo misma.
+function validarNombreCategoria(nombre, idIgnorado = null) {
+  const nombreLimpio = nombre.trim();
+
+  if (nombreLimpio === "") {
+    return "El nombre de la categoría es obligatorio.";
+  }
+
+  const repetida = categorias.some(function (categoria) {
+    return categoria.id !== idIgnorado &&
+           normalizarTexto(categoria.nombre) === normalizarTexto(nombreLimpio);
+  });
+
+  if (repetida) {
+    return "Ya existe una categoría con ese nombre.";
+  }
+
+  return "";
+}
+
+// ALTA: devuelve true si se pudo agregar
+function agregarCategoria(nombre) {
+  const error = validarNombreCategoria(nombre);
+  if (error !== "") {
+    alert(error);
+    return false;
+  }
+
+  categorias.push({ id: generarId(categorias), nombre: nombre.trim() });
+  guardarDatos();
+  return true;
+}
+
+// EDICIÓN: devuelve true si se pudo modificar
+function editarCategoria(id, nombreNuevo) {
+  const error = validarNombreCategoria(nombreNuevo, id);
+  if (error !== "") {
+    alert(error);
+    return false;
+  }
+
+  const categoria = categorias.find(function (c) {
+    return c.id === id;
+  });
+  categoria.nombre = nombreNuevo.trim();
+  guardarDatos();
+  return true;
+}
+
+// BAJA: devuelve true si se eliminó
+function eliminarCategoria(id) {
+  // No se puede borrar si tiene productos
+  const cantidad = contarProductosDeCategoria(id);
+  if (cantidad > 0) {
+    alert("No se puede eliminar: la categoría tiene " + cantidad +
+          (cantidad === 1 ? " producto." : " productos."));
+    return false;
+  }
+
+  if (!confirm("¿Seguro que querés eliminar esta categoría?")) {
+    return false;
+  }
+
+  categorias = categorias.filter(function (categoria) {
+    return categoria.id !== id;
+  });
+  guardarDatos();
+  return true;
+}
+
+
+// ============================================================
+// 4. PANTALLA DE CATEGORÍAS
+// ============================================================
+
+// Elementos del HTML que vamos a usar
+const formularioCategoria = document.getElementById("formularioCategoria");
+const campoCategoriaNombre = document.getElementById("categoriaNombre");
+const listaCategorias = document.getElementById("listaCategorias");
+const botonGuardarCategoria = formularioCategoria.querySelector("button[type='submit']");
+
+// Guarda el id de la categoría que se está editando (null = estamos agregando)
+let idCategoriaEnEdicion = null;
+
+// Creamos por JS el botón "Cancelar" (aparece solo al editar)
+const botonCancelarCategoria = document.createElement("button");
+botonCancelarCategoria.type = "button";
+botonCancelarCategoria.textContent = "Cancelar";
+botonCancelarCategoria.hidden = true;
+formularioCategoria.appendChild(botonCancelarCategoria);
+
+// Dibuja la lista de categorías en pantalla
+function mostrarCategorias() {
+  listaCategorias.innerHTML = ""; // vaciamos la lista
+
+  if (categorias.length === 0) {
+    const vacio = document.createElement("li");
+    vacio.textContent = "Todavía no hay categorías.";
+    listaCategorias.appendChild(vacio);
+    return;
+  }
+
+  for (const categoria of categorias) {
+    const item = document.createElement("li");
+
+    // Nombre y cantidad de productos
+    const cantidad = contarProductosDeCategoria(categoria.id);
+    const texto = document.createElement("span");
+    texto.textContent = categoria.nombre + " (" + cantidad +
+                        (cantidad === 1 ? " producto)" : " productos)");
+
+    // Botones de acción (guardan el id y la acción en atributos data-)
+    const acciones = document.createElement("span");
+
+    const botonEditar = document.createElement("button");
+    botonEditar.type = "button";
+    botonEditar.textContent = "✏️ Editar";
+    botonEditar.dataset.accion = "editar";
+    botonEditar.dataset.id = categoria.id;
+
+    const botonEliminar = document.createElement("button");
+    botonEliminar.type = "button";
+    botonEliminar.textContent = "🗑️ Eliminar";
+    botonEliminar.dataset.accion = "eliminar";
+    botonEliminar.dataset.id = categoria.id;
+
+    acciones.appendChild(botonEditar);
+    acciones.appendChild(botonEliminar);
+
+    item.appendChild(texto);
+    item.appendChild(acciones);
+    listaCategorias.appendChild(item);
+  }
+}
+
+// Pone el formulario en modo "editar"
+function iniciarEdicionCategoria(id) {
+  const categoria = categorias.find(function (c) {
+    return c.id === id;
+  });
+
+  idCategoriaEnEdicion = id;
+  campoCategoriaNombre.value = categoria.nombre;
+  botonGuardarCategoria.textContent = "Guardar cambios";
+  botonCancelarCategoria.hidden = false;
+  campoCategoriaNombre.focus();
+}
+
+// Vuelve el formulario al modo "agregar"
+function cancelarEdicionCategoria() {
+  idCategoriaEnEdicion = null;
+  formularioCategoria.reset();
+  botonGuardarCategoria.textContent = "Agregar categoría";
+  botonCancelarCategoria.hidden = true;
+}
+
+// Al enviar el formulario: agrega o edita según el modo
+formularioCategoria.addEventListener("submit", function (evento) {
+  evento.preventDefault(); // evita que la página se recargue
+
+  let salioBien;
+  if (idCategoriaEnEdicion === null) {
+    salioBien = agregarCategoria(campoCategoriaNombre.value);
+  } else {
+    salioBien = editarCategoria(idCategoriaEnEdicion, campoCategoriaNombre.value);
+  }
+
+  if (salioBien) {
+    cancelarEdicionCategoria();
+    actualizarPantallaPorCambioDeCategorias();
+  }
+});
+
+botonCancelarCategoria.addEventListener("click", cancelarEdicionCategoria);
+
+// Un solo "oído" en la lista para los botones Editar y Eliminar de todas las filas
+listaCategorias.addEventListener("click", function (evento) {
+  const boton = evento.target.closest("button");
+  if (!boton) {
+    return; // el clic no fue sobre un botón
+  }
+
+  const id = Number(boton.dataset.id);
+
+  if (boton.dataset.accion === "editar") {
+    iniciarEdicionCategoria(id);
+  } else if (boton.dataset.accion === "eliminar") {
+    if (eliminarCategoria(id)) {
+      // Si justo estábamos editando esa categoría, cancelamos la edición
+      if (idCategoriaEnEdicion === id) {
+        cancelarEdicionCategoria();
+      }
+      actualizarPantallaPorCambioDeCategorias();
+    }
+  }
+});
+
+
+// ============================================================
+// 5. LÓGICA DE PRODUCTOS (alta, edición y baja)
+// ============================================================
+
+// Textos que se muestran en la tabla para cada estado
+const TEXTOS_ESTADO = {
+  "normal": "Normal",
+  "bajo": "Stock bajo",
+  "sin-stock": "Sin stock"
+};
+
+// Calcula el estado de un producto según su stock actual.
+// Importante: primero se revisa el 0, porque 0 también es "menor o igual al mínimo".
+function calcularEstado(producto) {
+  if (producto.stockActual === 0) {
+    return "sin-stock";
+  } else if (producto.stockActual <= producto.stockMinimo) {
+    return "bajo";
+  } else {
+    return "normal";
+  }
+}
+
+// Devuelve true si el texto es un entero de 0 o más (ej: "0", "15"; no "-3", "2.5" ni "")
+function esEnteroNoNegativo(texto) {
+  return /^\d+$/.test(texto);
+}
+
+// Busca un producto por su código (devuelve undefined si no existe)
+function buscarProductoPorCodigo(codigo) {
+  return productos.find(function (producto) {
+    return producto.codigo === codigo;
+  });
+}
+
+// Revisa los datos del formulario. Devuelve el mensaje de error, o "" si está todo bien.
+// esEdicion = true: el código y el stock inicial no se revisan porque no se pueden cambiar.
+function validarDatosProducto(datos, esEdicion) {
+  if (!esEdicion) {
+    if (!/^\d{8,13}$/.test(datos.codigo)) {
+      return "El código debe tener entre 8 y 13 dígitos (solo números).";
+    }
+    if (buscarProductoPorCodigo(datos.codigo)) {
+      return "Ya existe un producto con ese código.";
+    }
+  }
+
+  if (datos.nombre === "") {
+    return "El nombre es obligatorio.";
+  }
+
+  const categoriaValida = categorias.some(function (categoria) {
+    return categoria.id === datos.categoriaId;
+  });
+  if (!categoriaValida) {
+    return "Elegí una categoría.";
+  }
+
+  const precio = Number(datos.precio);
+  if (datos.precio === "" || !(precio > 0)) {
+    return "El precio tiene que ser mayor que cero.";
+  }
+
+  if (!esEdicion && !esEnteroNoNegativo(datos.stockInicial)) {
+    return "El stock inicial tiene que ser un número entero, 0 o mayor.";
+  }
+
+  if (!esEnteroNoNegativo(datos.stockMinimo)) {
+    return "El stock mínimo tiene que ser un número entero, 0 o mayor.";
+  }
+
+  return "";
+}
+
+// ALTA: devuelve true si se pudo agregar
+function agregarProducto(datos) {
+  const error = validarDatosProducto(datos, false);
+  if (error !== "") {
+    alert(error);
+    return false;
+  }
+
+  productos.push({
+    codigo: datos.codigo,
+    nombre: datos.nombre,
+    categoriaId: datos.categoriaId,
+    unidad: datos.unidad,
+    precio: Number(datos.precio),
+    stockInicial: Number(datos.stockInicial),
+    stockActual: Number(datos.stockInicial), // al crearlo, el stock actual es el inicial
+    stockMinimo: Number(datos.stockMinimo)
+  });
+  guardarDatos();
+  return true;
+}
+
+// EDICIÓN: no toca el código, el stock inicial ni el stock actual
+function editarProducto(codigo, datos) {
+  const error = validarDatosProducto(datos, true);
+  if (error !== "") {
+    alert(error);
+    return false;
+  }
+
+  const producto = buscarProductoPorCodigo(codigo);
+  producto.nombre = datos.nombre;
+  producto.categoriaId = datos.categoriaId;
+  producto.unidad = datos.unidad;
+  producto.precio = Number(datos.precio);
+  producto.stockMinimo = Number(datos.stockMinimo);
+  guardarDatos();
+  return true;
+}
+
+// BAJA: pide confirmación. Devuelve true si se eliminó.
+function eliminarProducto(codigo) {
+  const producto = buscarProductoPorCodigo(codigo);
+
+  if (!confirm("¿Seguro que querés eliminar el producto \"" + producto.nombre + "\"?")) {
+    return false;
+  }
+
+  productos = productos.filter(function (p) {
+    return p.codigo !== codigo;
+  });
+  guardarDatos();
+  return true;
+}
+
+
+// ============================================================
+// 6. PANTALLA DE PRODUCTOS
+// ============================================================
+
+// Elementos del HTML que vamos a usar
+const formularioProducto = document.getElementById("formularioProducto");
+const campoProductoCodigo = document.getElementById("productoCodigo");
+const campoProductoNombre = document.getElementById("productoNombre");
+const campoProductoCategoria = document.getElementById("productoCategoria");
+const campoProductoUnidad = document.getElementById("productoUnidad");
+const campoProductoPrecio = document.getElementById("productoPrecio");
+const campoProductoStockInicial = document.getElementById("productoStockInicial");
+const campoProductoStockMinimo = document.getElementById("productoStockMinimo");
+const botonGuardarProducto = formularioProducto.querySelector("button[type='submit']");
+const botonLimpiarProducto = formularioProducto.querySelector("button[type='reset']");
+const cuerpoTablaProductos = document.getElementById("cuerpoTablaProductos");
+const buscadorProductos = document.getElementById("buscadorProductos");
+const filtroCategoria = document.getElementById("filtroCategoria");
+const filtroEstado = document.getElementById("filtroEstado");
+
+// Código del producto que se está editando (null = estamos agregando)
+let codigoProductoEnEdicion = null;
+
+// Devuelve el nombre de una categoría a partir de su id
+function nombreDeCategoria(idCategoria) {
+  const categoria = categorias.find(function (c) {
+    return c.id === idCategoria;
+  });
+  return categoria ? categoria.nombre : "Sin categoría";
+}
+
+// Llena el selector de categorías del formulario con las categorías actuales
+function cargarSelectorCategoriasProducto() {
+  const seleccionAnterior = campoProductoCategoria.value;
+  campoProductoCategoria.innerHTML = "";
+
+  const opcionInicial = document.createElement("option");
+  opcionInicial.value = "";
+  opcionInicial.textContent = "Elegí una categoría";
+  campoProductoCategoria.appendChild(opcionInicial);
+
+  for (const categoria of categorias) {
+    const opcion = document.createElement("option");
+    opcion.value = categoria.id;
+    opcion.textContent = categoria.nombre;
+    campoProductoCategoria.appendChild(opcion);
+  }
+
+  // Intentamos mantener lo que estaba elegido
+  campoProductoCategoria.value = seleccionAnterior;
+  if (campoProductoCategoria.selectedIndex === -1) {
+    campoProductoCategoria.selectedIndex = 0;
+  }
+}
+
+// Llena el filtro de categorías de la tabla con las categorías actuales
+function cargarFiltroCategoria() {
+  const seleccionAnterior = filtroCategoria.value;
+  filtroCategoria.innerHTML = "";
+
+  const opcionTodas = document.createElement("option");
+  opcionTodas.value = "";
+  opcionTodas.textContent = "Todas";
+  filtroCategoria.appendChild(opcionTodas);
+
+  for (const categoria of categorias) {
+    const opcion = document.createElement("option");
+    opcion.value = categoria.id;
+    opcion.textContent = categoria.nombre;
+    filtroCategoria.appendChild(opcion);
+  }
+
+  // Intentamos mantener lo que estaba elegido
+  filtroCategoria.value = seleccionAnterior;
+  if (filtroCategoria.selectedIndex === -1) {
+    filtroCategoria.selectedIndex = 0;
+  }
+}
+
+// Devuelve los productos que cumplen la búsqueda Y el filtro de categoría Y el de estado
+function obtenerProductosFiltrados() {
+  const textoBusqueda = normalizarTexto(buscadorProductos.value);
+  const categoriaElegida = filtroCategoria.value; // "" significa "todas"
+  const estadoElegido = filtroEstado.value;       // "" significa "todos"
+
+  return productos.filter(function (producto) {
+    // Busca el texto en el código o en el nombre (sin mayúsculas ni tildes)
+    const coincideTexto = textoBusqueda === "" ||
+      normalizarTexto(producto.codigo).includes(textoBusqueda) ||
+      normalizarTexto(producto.nombre).includes(textoBusqueda);
+
+    const coincideCategoria = categoriaElegida === "" ||
+      producto.categoriaId === Number(categoriaElegida);
+
+    const coincideEstado = estadoElegido === "" ||
+      calcularEstado(producto) === estadoElegido;
+
+    // Tienen que cumplirse las tres condiciones a la vez
+    return coincideTexto && coincideCategoria && coincideEstado;
+  });
+}
+
+// Cada vez que se escribe o se cambia un filtro, se vuelve a dibujar la tabla
+buscadorProductos.addEventListener("input", mostrarProductos);
+filtroCategoria.addEventListener("change", mostrarProductos);
+filtroEstado.addEventListener("change", mostrarProductos);
+
+// Se usa cuando cambian las categorías: actualiza lista, selectores y tabla
+function actualizarPantallaPorCambioDeCategorias() {
+  mostrarCategorias();
+  cargarSelectorCategoriasProducto();
+  cargarFiltroCategoria();
+  mostrarProductos();
+}
+
+// Crea una celda <td> con texto
+function crearCelda(texto) {
+  const celda = document.createElement("td");
+  celda.textContent = texto;
+  return celda;
+}
+
+// Dibuja la tabla de productos
+function mostrarProductos() {
+  cuerpoTablaProductos.innerHTML = "";
+
+  // Solo se dibujan los productos que pasan la búsqueda y los filtros
+  const productosAMostrar = obtenerProductosFiltrados();
+
+  if (productosAMostrar.length === 0) {
+    const filaVacia = document.createElement("tr");
+    const celdaVacia = crearCelda(
+      productos.length === 0 ? "Todavía no hay productos." : "No hay productos que coincidan con la búsqueda."
+    );
+    celdaVacia.colSpan = 8;
+    filaVacia.appendChild(celdaVacia);
+    cuerpoTablaProductos.appendChild(filaVacia);
+    return;
+  }
+
+  for (const producto of productosAMostrar) {
+    const fila = document.createElement("tr");
+
+    fila.appendChild(crearCelda(producto.codigo));
+    fila.appendChild(crearCelda(producto.nombre));
+    fila.appendChild(crearCelda(nombreDeCategoria(producto.categoriaId)));
+    fila.appendChild(crearCelda(producto.precio.toLocaleString("es-AR", { style: "currency", currency: "ARS" })));
+    fila.appendChild(crearCelda(producto.stockActual));
+    fila.appendChild(crearCelda(producto.stockMinimo));
+
+    // Celda del estado: usa las clases de colores del CSS
+    const estado = calcularEstado(producto);
+    const celdaEstado = document.createElement("td");
+    const etiqueta = document.createElement("span");
+    etiqueta.className = "estado estado-" + estado;
+    etiqueta.textContent = TEXTOS_ESTADO[estado];
+    celdaEstado.appendChild(etiqueta);
+    fila.appendChild(celdaEstado);
+
+    // Celda de acciones (el código queda guardado en data-codigo)
+    const celdaAcciones = document.createElement("td");
+
+    const botonEditar = document.createElement("button");
+    botonEditar.type = "button";
+    botonEditar.textContent = "✏️ Editar";
+    botonEditar.dataset.accion = "editar";
+    botonEditar.dataset.codigo = producto.codigo;
+
+    const botonEliminar = document.createElement("button");
+    botonEliminar.type = "button";
+    botonEliminar.textContent = "🗑️ Eliminar";
+    botonEliminar.dataset.accion = "eliminar";
+    botonEliminar.dataset.codigo = producto.codigo;
+
+    celdaAcciones.appendChild(botonEditar);
+    celdaAcciones.appendChild(botonEliminar);
+    fila.appendChild(celdaAcciones);
+
+    cuerpoTablaProductos.appendChild(fila);
+  }
+}
+
+// Lee los campos del formulario y los junta en un objeto
+function leerFormularioProducto() {
+  return {
+    codigo: campoProductoCodigo.value.trim(),
+    nombre: campoProductoNombre.value.trim(),
+    categoriaId: Number(campoProductoCategoria.value),
+    unidad: campoProductoUnidad.value,
+    precio: campoProductoPrecio.value.trim(),
+    stockInicial: campoProductoStockInicial.value.trim(),
+    stockMinimo: campoProductoStockMinimo.value.trim()
+  };
+}
+
+// Pone el formulario en modo "editar"
+function iniciarEdicionProducto(codigo) {
+  const producto = buscarProductoPorCodigo(codigo);
+
+  codigoProductoEnEdicion = codigo;
+  campoProductoCodigo.value = producto.codigo;
+  campoProductoNombre.value = producto.nombre;
+  campoProductoCategoria.value = producto.categoriaId;
+  campoProductoUnidad.value = producto.unidad;
+  campoProductoPrecio.value = producto.precio;
+  campoProductoStockInicial.value = producto.stockInicial;
+  campoProductoStockMinimo.value = producto.stockMinimo;
+
+  // El código y el stock no se cambian desde acá (el stock cambia solo con movimientos)
+  campoProductoCodigo.disabled = true;
+  campoProductoStockInicial.disabled = true;
+
+  botonGuardarProducto.textContent = "Guardar cambios";
+  botonLimpiarProducto.textContent = "Cancelar";
+
+  formularioProducto.scrollIntoView({ behavior: "smooth" });
+  campoProductoNombre.focus();
+}
+
+// Cuando el formulario se limpia (botón Limpiar/Cancelar o después de guardar),
+// volvemos al modo "agregar"
+formularioProducto.addEventListener("reset", function () {
+  codigoProductoEnEdicion = null;
+  campoProductoCodigo.disabled = false;
+  campoProductoStockInicial.disabled = false;
+  botonGuardarProducto.textContent = "Guardar producto";
+  botonLimpiarProducto.textContent = "Limpiar";
+});
+
+// Al enviar el formulario: agrega o edita según el modo
+formularioProducto.addEventListener("submit", function (evento) {
+  evento.preventDefault();
+
+  const datos = leerFormularioProducto();
+
+  let salioBien;
+  if (codigoProductoEnEdicion === null) {
+    salioBien = agregarProducto(datos);
+  } else {
+    salioBien = editarProducto(codigoProductoEnEdicion, datos);
+  }
+
+  if (salioBien) {
+    formularioProducto.reset();
+    mostrarProductos();
+    mostrarCategorias(); // para actualizar la cantidad de productos de cada categoría
+    actualizarPantallaMovimientos(); // sugerencias, filtro y nombres del historial
+    actualizarAlertas();             // el mínimo o el producto pudo cambiar
+  }
+});
+
+// Un solo "oído" en la tabla para los botones Editar y Eliminar de todas las filas
+cuerpoTablaProductos.addEventListener("click", function (evento) {
+  const boton = evento.target.closest("button");
+  if (!boton) {
+    return;
+  }
+
+  const codigo = boton.dataset.codigo;
+
+  if (boton.dataset.accion === "editar") {
+    iniciarEdicionProducto(codigo);
+  } else if (boton.dataset.accion === "eliminar") {
+    if (eliminarProducto(codigo)) {
+      // Si justo estábamos editando ese producto, cancelamos la edición
+      if (codigoProductoEnEdicion === codigo) {
+        formularioProducto.reset();
+      }
+      mostrarProductos();
+      mostrarCategorias();
+      actualizarPantallaMovimientos();
+      actualizarAlertas();
+    }
+  }
+});
+
+
+// ============================================================
+// 7. LÓGICA DE MOVIMIENTOS (entradas y salidas de stock)
+// ============================================================
+
+// Textos para mostrar en el historial
+const TEXTOS_TIPO = {
+  "entrada": "📥 Entrada",
+  "salida": "📤 Salida"
+};
+
+const TEXTOS_MOTIVO = {
+  "compra": "Compra a proveedor",
+  "venta": "Venta",
+  "devolucion": "Devolución",
+  "vencimiento": "Vencimiento o rotura",
+  "ajuste": "Ajuste de inventario"
+};
+
+// Devuelve la fecha de hoy como texto "AAAA-MM-DD" (con la hora local, no la UTC)
+function obtenerFechaDeHoy() {
+  const hoy = new Date();
+  const mes = String(hoy.getMonth() + 1).padStart(2, "0");
+  const dia = String(hoy.getDate()).padStart(2, "0");
+  return hoy.getFullYear() + "-" + mes + "-" + dia;
+}
+
+// Devuelve true si el texto "AAAA-MM-DD" es una fecha que existe (ej: no existe 2026-02-31)
+function esFechaValida(texto) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(texto)) {
+    return false;
+  }
+
+  const partes = texto.split("-");
+  const anio = Number(partes[0]);
+  const mes = Number(partes[1]);
+  const dia = Number(partes[2]);
+
+  // Armamos la fecha y comprobamos que JavaScript no la "corrigió" a otro día
+  const fecha = new Date(anio, mes - 1, dia);
+  return fecha.getFullYear() === anio &&
+         fecha.getMonth() === mes - 1 &&
+         fecha.getDate() === dia;
+}
+
+// Pasa "2026-11-13" a "13/11/2026" para mostrarla
+function formatearFecha(texto) {
+  const partes = texto.split("-");
+  return partes[2] + "/" + partes[1] + "/" + partes[0];
+}
+
+// Revisa los datos del movimiento. Devuelve el mensaje de error, o "" si está todo bien.
+function validarDatosMovimiento(datos) {
+  const producto = buscarProductoPorCodigo(datos.codigo);
+  if (!producto) {
+    return "Producto no encontrado. Ingresá un código que exista.";
+  }
+
+  if (!/^\d+$/.test(datos.cantidad) || Number(datos.cantidad) <= 0) {
+    return "La cantidad tiene que ser un número entero mayor que cero.";
+  }
+
+  if (!esFechaValida(datos.fecha)) {
+    return "La fecha no es válida.";
+  }
+  if (datos.fecha > obtenerFechaDeHoy()) {
+    return "La fecha no puede ser futura.";
+  }
+
+  // Una salida no puede dejar el stock en negativo
+  if (datos.tipo === "salida" && Number(datos.cantidad) > producto.stockActual) {
+    return "Stock insuficiente: hay " + producto.stockActual +
+           " y querés sacar " + Number(datos.cantidad) + ".";
+  }
+
+  return "";
+}
+
+// Registra el movimiento y actualiza el stock del producto.
+// Devuelve true si se pudo registrar.
+function registrarMovimiento(datos) {
+  const error = validarDatosMovimiento(datos);
+  if (error !== "") {
+    alert(error);
+    return false;
+  }
+
+  const producto = buscarProductoPorCodigo(datos.codigo);
+  const cantidad = Number(datos.cantidad);
+
+  // La entrada suma y la salida resta
+  if (datos.tipo === "entrada") {
+    producto.stockActual = producto.stockActual + cantidad;
+  } else {
+    producto.stockActual = producto.stockActual - cantidad;
+  }
+
+  movimientos.push({
+    id: generarId(movimientos),
+    codigo: datos.codigo,
+    tipo: datos.tipo,
+    motivo: datos.motivo,
+    cantidad: cantidad,
+    fecha: datos.fecha,
+    observacion: datos.observacion
+  });
+
+  guardarDatos();
+  return true;
+}
+
+
+// ============================================================
+// 8. PANTALLA DE MOVIMIENTOS
+// ============================================================
+
+// Elementos del HTML que vamos a usar
+const formularioMovimiento = document.getElementById("formularioMovimiento");
+const campoMovimientoCodigo = document.getElementById("movimientoCodigo");
+const campoMovimientoTipo = document.getElementById("movimientoTipo");
+const campoMovimientoMotivo = document.getElementById("movimientoMotivo");
+const campoMovimientoCantidad = document.getElementById("movimientoCantidad");
+const campoMovimientoFecha = document.getElementById("movimientoFecha");
+const campoMovimientoObservacion = document.getElementById("movimientoObservacion");
+const infoProductoMovimiento = document.getElementById("infoProductoMovimiento");
+const listaCodigos = document.getElementById("listaCodigos");
+const filtroMovimientoProducto = document.getElementById("filtroMovimientoProducto");
+const cuerpoTablaMovimientos = document.getElementById("cuerpoTablaMovimientos");
+
+// La fecha arranca en hoy y no se puede elegir una futura.
+// Con defaultValue, el botón Limpiar también vuelve a poner la fecha de hoy.
+function prepararFechaMovimiento() {
+  const hoy = obtenerFechaDeHoy();
+  campoMovimientoFecha.max = hoy;
+  campoMovimientoFecha.defaultValue = hoy;
+  campoMovimientoFecha.value = hoy;
+}
+
+// Muestra el nombre y el stock actual del producto cuyo código se está escribiendo
+function mostrarInfoProductoMovimiento() {
+  const codigo = campoMovimientoCodigo.value.trim();
+  infoProductoMovimiento.className = "";
+
+  if (codigo === "") {
+    infoProductoMovimiento.textContent = "";
+    return;
+  }
+
+  const producto = buscarProductoPorCodigo(codigo);
+  if (!producto) {
+    infoProductoMovimiento.textContent = "❌ Producto no encontrado";
+    infoProductoMovimiento.className = "info-no-encontrado";
+  } else {
+    infoProductoMovimiento.textContent = "✅ " + producto.nombre +
+                                         " — Stock actual: " + producto.stockActual;
+  }
+}
+
+// Llena las sugerencias del campo código (el <datalist>)
+function cargarSugerenciasDeCodigos() {
+  listaCodigos.innerHTML = "";
+
+  for (const producto of productos) {
+    const opcion = document.createElement("option");
+    opcion.value = producto.codigo;
+    opcion.textContent = producto.nombre;
+    listaCodigos.appendChild(opcion);
+  }
+}
+
+// Llena el filtro del historial con los productos actuales
+function cargarFiltroMovimientos() {
+  const seleccionAnterior = filtroMovimientoProducto.value;
+  filtroMovimientoProducto.innerHTML = "";
+
+  const opcionTodos = document.createElement("option");
+  opcionTodos.value = "";
+  opcionTodos.textContent = "Todos los productos";
+  filtroMovimientoProducto.appendChild(opcionTodos);
+
+  for (const producto of productos) {
+    const opcion = document.createElement("option");
+    opcion.value = producto.codigo;
+    opcion.textContent = producto.codigo + " - " + producto.nombre;
+    filtroMovimientoProducto.appendChild(opcion);
+  }
+
+  // Intentamos mantener lo que estaba elegido
+  filtroMovimientoProducto.value = seleccionAnterior;
+  if (filtroMovimientoProducto.selectedIndex === -1) {
+    filtroMovimientoProducto.selectedIndex = 0;
+  }
+}
+
+// Dibuja el historial: del más nuevo al más viejo, aplicando el filtro por producto
+function mostrarHistorial() {
+  cuerpoTablaMovimientos.innerHTML = "";
+
+  const codigoFiltro = filtroMovimientoProducto.value;
+
+  // Filtramos (si hay un producto elegido) y ordenamos una copia del array
+  const lista = movimientos
+    .filter(function (movimiento) {
+      return codigoFiltro === "" || movimiento.codigo === codigoFiltro;
+    })
+    .sort(function (a, b) {
+      if (a.fecha !== b.fecha) {
+        return a.fecha < b.fecha ? 1 : -1; // fecha más nueva primero
+      }
+      return b.id - a.id; // en la misma fecha, el último registrado primero
+    });
+
+  if (lista.length === 0) {
+    const filaVacia = document.createElement("tr");
+    const celdaVacia = crearCelda(
+      codigoFiltro === "" ? "Todavía no hay movimientos." : "No hay movimientos para ese producto."
+    );
+    celdaVacia.colSpan = 7;
+    filaVacia.appendChild(celdaVacia);
+    cuerpoTablaMovimientos.appendChild(filaVacia);
+    return;
+  }
+
+  for (const movimiento of lista) {
+    const fila = document.createElement("tr");
+    const producto = buscarProductoPorCodigo(movimiento.codigo);
+    const signo = movimiento.tipo === "entrada" ? "+" : "-";
+
+    fila.appendChild(crearCelda(formatearFecha(movimiento.fecha)));
+    fila.appendChild(crearCelda(movimiento.codigo));
+    fila.appendChild(crearCelda(producto ? producto.nombre : "(producto eliminado)"));
+    fila.appendChild(crearCelda(TEXTOS_TIPO[movimiento.tipo]));
+    fila.appendChild(crearCelda(TEXTOS_MOTIVO[movimiento.motivo] || movimiento.motivo));
+    fila.appendChild(crearCelda(signo + movimiento.cantidad));
+    fila.appendChild(crearCelda(movimiento.observacion === "" ? "-" : movimiento.observacion));
+
+    cuerpoTablaMovimientos.appendChild(fila);
+  }
+}
+
+// Actualiza todo lo de Movimientos (se usa cuando cambian los productos)
+function actualizarPantallaMovimientos() {
+  cargarSugerenciasDeCodigos();
+  cargarFiltroMovimientos();
+  mostrarInfoProductoMovimiento();
+  mostrarHistorial();
+}
+
+// Mientras se escribe el código, mostramos el nombre y el stock
+campoMovimientoCodigo.addEventListener("input", mostrarInfoProductoMovimiento);
+
+// Enter en el código: no envía el formulario, pasa el foco a cantidad
+campoMovimientoCodigo.addEventListener("keydown", function (evento) {
+  if (evento.key === "Enter") {
+    evento.preventDefault();
+    campoMovimientoCantidad.focus();
+  }
+});
+
+// Al limpiar el formulario también se borra el mensaje del producto
+formularioMovimiento.addEventListener("reset", function () {
+  infoProductoMovimiento.textContent = "";
+  infoProductoMovimiento.className = "";
+});
+
+// Al enviar el formulario: registra el movimiento
+formularioMovimiento.addEventListener("submit", function (evento) {
+  evento.preventDefault();
+
+  const datos = {
+    codigo: campoMovimientoCodigo.value.trim(),
+    tipo: campoMovimientoTipo.value,
+    motivo: campoMovimientoMotivo.value,
+    cantidad: campoMovimientoCantidad.value.trim(),
+    fecha: campoMovimientoFecha.value,
+    observacion: campoMovimientoObservacion.value.trim()
+  };
+
+  if (registrarMovimiento(datos)) {
+    formularioMovimiento.reset();
+    mostrarProductos();              // el stock de la tabla de productos cambió
+    actualizarPantallaMovimientos(); // actualiza el historial
+    actualizarAlertas();             // el stock cambió: actualiza alertas y contador
+    campoMovimientoCodigo.focus();   // listo para cargar el siguiente
+  }
+});
+
+// Al cambiar el filtro, se vuelve a dibujar el historial
+filtroMovimientoProducto.addEventListener("change", mostrarHistorial);
+
+
+// ============================================================
+// 9. ALERTAS (productos sin stock o en el mínimo o por debajo)
+// ============================================================
+
+// Elementos del HTML que vamos a usar
+const listaAlertas = document.getElementById("listaAlertas");
+const contadorAlertas = document.getElementById("contadorAlertas");
+
+// Cantidad sugerida para pedir: el doble del mínimo menos el stock actual
+function calcularCantidadSugerida(producto) {
+  return producto.stockMinimo * 2 - producto.stockActual;
+}
+
+// Devuelve los productos en alerta, del más urgente al menos urgente.
+// Criterio de urgencia:
+//   1) primero los que no tienen stock
+//   2) después, los que tienen menos stock en proporción a su mínimo
+//   3) si empatan, el que más le falta para llegar al mínimo
+//   4) si siguen empatados, por nombre
+function obtenerProductosEnAlerta() {
+  // filter crea un array nuevo, así que ordenarlo no cambia el array "productos"
+  return productos
+    .filter(function (producto) {
+      return calcularEstado(producto) !== "normal";
+    })
+    .sort(function (a, b) {
+      const estadoA = calcularEstado(a);
+      const estadoB = calcularEstado(b);
+
+      // 1) los "sin-stock" van primero
+      if (estadoA !== estadoB) {
+        return estadoA === "sin-stock" ? -1 : 1;
+      }
+
+      // 2) proporción: stock actual dividido el mínimo (más chica = más urgente)
+      const proporcionA = a.stockMinimo === 0 ? 0 : a.stockActual / a.stockMinimo;
+      const proporcionB = b.stockMinimo === 0 ? 0 : b.stockActual / b.stockMinimo;
+      if (proporcionA !== proporcionB) {
+        return proporcionA - proporcionB;
+      }
+
+      // 3) cuánto le falta para llegar al mínimo (más faltante = más urgente)
+      const faltanteA = a.stockMinimo - a.stockActual;
+      const faltanteB = b.stockMinimo - b.stockActual;
+      if (faltanteA !== faltanteB) {
+        return faltanteB - faltanteA;
+      }
+
+      // 4) por nombre
+      return a.nombre.localeCompare(b.nombre);
+    });
+}
+
+// Crea un <span> con un dato, por ejemplo "Stock actual: 8"
+function crearDatoDeAlerta(texto, clase) {
+  const dato = document.createElement("span");
+  dato.textContent = texto;
+  if (clase) {
+    dato.className = clase;
+  }
+  return dato;
+}
+
+// Dibuja la lista de alertas y actualiza el contador del menú
+function actualizarAlertas() {
+  const alertas = obtenerProductosEnAlerta();
+
+  // Contador del menú (se pone gris cuando es 0)
+  contadorAlertas.textContent = alertas.length;
+  contadorAlertas.classList.toggle("contador-cero", alertas.length === 0);
+
+  listaAlertas.innerHTML = "";
+
+  // Si no hay alertas, mostramos un mensaje
+  if (alertas.length === 0) {
+    const itemVacio = document.createElement("li");
+    itemVacio.className = "alerta-vacia";
+    itemVacio.textContent = "✅ Todo el stock está en orden";
+    listaAlertas.appendChild(itemVacio);
+    return;
+  }
+
+  for (const producto of alertas) {
+    const estado = calcularEstado(producto);
+    const item = document.createElement("li");
+    item.className = "alerta-" + estado;
+
+    // Línea de arriba: nombre, estado y código
+    const encabezado = document.createElement("div");
+    encabezado.className = "alerta-encabezado";
+
+    const nombre = document.createElement("strong");
+    nombre.textContent = producto.nombre;
+
+    const etiqueta = document.createElement("span");
+    etiqueta.className = "estado estado-" + estado;
+    etiqueta.textContent = TEXTOS_ESTADO[estado];
+
+    encabezado.appendChild(nombre);
+    encabezado.appendChild(etiqueta);
+    encabezado.appendChild(crearDatoDeAlerta("Código " + producto.codigo, "alerta-codigo"));
+
+    // Línea de abajo: stock actual, mínimo y cantidad sugerida
+    const datos = document.createElement("p");
+    datos.className = "alerta-datos";
+    datos.appendChild(crearDatoDeAlerta("Stock actual: " + producto.stockActual));
+    datos.appendChild(crearDatoDeAlerta("Mínimo: " + producto.stockMinimo));
+    datos.appendChild(crearDatoDeAlerta("Pedir: " + calcularCantidadSugerida(producto), "alerta-sugerida"));
+
+    item.appendChild(encabezado);
+    item.appendChild(datos);
+    listaAlertas.appendChild(item);
+  }
+}
+
+
+// ============================================================
+// 10. LISTA DE REPOSICIÓN (para imprimir)
+// ============================================================
+
+// Elementos del HTML que vamos a usar
+const botonImprimirReposicion = document.getElementById("botonImprimirReposicion");
+const fechaListaReposicion = document.getElementById("fechaListaReposicion");
+const cuerpoTablaReposicion = document.getElementById("cuerpoTablaReposicion");
+
+// Arma la tabla de reposición y abre el cuadro de impresión
+function imprimirListaReposicion() {
+  const alertas = obtenerProductosEnAlerta();
+
+  // Si no hay nada para reponer, no tiene sentido imprimir
+  if (alertas.length === 0) {
+    alert("No hay productos para reponer: todo el stock está en orden.");
+    return;
+  }
+
+  fechaListaReposicion.textContent = "Fecha: " + formatearFecha(obtenerFechaDeHoy());
+  cuerpoTablaReposicion.innerHTML = "";
+
+  for (const producto of alertas) {
+    const fila = document.createElement("tr");
+
+    // Celda del producto: nombre y debajo el código
+    const celdaProducto = document.createElement("td");
+    const nombre = document.createElement("strong");
+    nombre.textContent = producto.nombre;
+    const codigo = document.createElement("small");
+    codigo.textContent = "Código " + producto.codigo;
+    celdaProducto.appendChild(nombre);
+    celdaProducto.appendChild(document.createElement("br"));
+    celdaProducto.appendChild(codigo);
+
+    // Celda de la cantidad sugerida
+    const celdaCantidad = crearCelda(calcularCantidadSugerida(producto));
+
+    // Celda con el casillero vacío para tildar a mano
+    const celdaCasillero = document.createElement("td");
+    const casillero = document.createElement("span");
+    casillero.className = "casillero";
+    celdaCasillero.appendChild(casillero);
+
+    fila.appendChild(celdaProducto);
+    fila.appendChild(celdaCantidad);
+    fila.appendChild(celdaCasillero);
+    cuerpoTablaReposicion.appendChild(fila);
+  }
+
+  // Abre el cuadro de impresión del navegador
+  window.print();
+}
+
+botonImprimirReposicion.addEventListener("click", imprimirListaReposicion);
+
+
+// ============================================================
+// 11. EXPORTAR E IMPORTAR
+// ============================================================
+
+// Elementos del HTML que vamos a usar
+const botonExportar = document.getElementById("botonExportar");
+const botonImportar = document.getElementById("botonImportar");
+const archivoImportar = document.getElementById("archivoImportar");
+
+// Tamaño máximo del archivo a importar: 5 MB
+const TAMANIO_MAXIMO_ARCHIVO = 5 * 1024 * 1024;
+
+// Vuelve a dibujar toda la pantalla con los datos actuales
+function redibujarTodo() {
+  cargarSelectorCategoriasProducto();
+  cargarFiltroCategoria();
+  mostrarCategorias();
+  mostrarProductos();
+  actualizarPantallaMovimientos();
+  actualizarAlertas();
+}
+
+// ---------- EXPORTAR ----------
+
+// Descarga un texto como archivo usando un Blob y un enlace temporal
+function descargarArchivo(texto, nombreArchivo) {
+  // 1) El Blob es un "archivo en memoria" con el texto adentro
+  const blob = new Blob([texto], { type: "application/json" });
+
+  // 2) Creamos una dirección temporal que apunta a ese Blob
+  const direccion = URL.createObjectURL(blob);
+
+  // 3) Creamos un enlace con el atributo download, lo "clickeamos" y lo sacamos
+  const enlace = document.createElement("a");
+  enlace.href = direccion;
+  enlace.download = nombreArchivo;
+  document.body.appendChild(enlace);
+  enlace.click();
+  document.body.removeChild(enlace);
+
+  // 4) Liberamos la dirección temporal (con un poco de demora, por seguridad)
+  setTimeout(function () {
+    URL.revokeObjectURL(direccion);
+  }, 1000);
+}
+
+// Arma el texto JSON con todos los datos (null, 2 = con sangría de 2 espacios, legible)
+function crearTextoExportacion() {
+  const datos = { categorias, productos, movimientos };
+  return JSON.stringify(datos, null, 2);
+}
+
+function exportarDatos() {
+  descargarArchivo(crearTextoExportacion(), "stock.json");
+}
+
+// ---------- IMPORTAR ----------
+
+// Devuelve true si el valor es un texto con algo escrito
+function esTextoNoVacio(valor) {
+  return typeof valor === "string" && valor.trim() !== "";
+}
+
+// Devuelve true si el valor es un número entero (ya numérico, no texto) de 0 o más
+function esEnteroValido(valor) {
+  return Number.isInteger(valor) && valor >= 0;
+}
+
+// Revisa que los datos leídos del archivo tengan las tres listas y que cada elemento
+// sea válido. Devuelve el mensaje de error, o "" si está todo bien.
+function validarDatosImportados(datos) {
+  if (datos === null || typeof datos !== "object" || Array.isArray(datos)) {
+    return "el contenido tiene que ser un objeto con las listas categorias, productos y movimientos.";
+  }
+
+  // Las tres listas tienen que existir y ser arrays
+  const nombresDeListas = ["categorias", "productos", "movimientos"];
+  for (const nombreLista of nombresDeListas) {
+    if (!Array.isArray(datos[nombreLista])) {
+      return "falta la lista \"" + nombreLista + "\" o no es una lista.";
+    }
+  }
+
+  // --- Categorías ---
+  const idsCategorias = [];
+  const nombresCategorias = [];
+  for (let i = 0; i < datos.categorias.length; i++) {
+    const categoria = datos.categorias[i];
+    const lugar = "categoría n.º " + (i + 1) + ": ";
+
+    if (categoria === null || typeof categoria !== "object") {
+      return lugar + "no es válida.";
+    }
+    if (!esEnteroValido(categoria.id)) {
+      return lugar + "el id tiene que ser un número entero.";
+    }
+    if (!esTextoNoVacio(categoria.nombre)) {
+      return lugar + "el nombre es obligatorio.";
+    }
+    if (idsCategorias.includes(categoria.id)) {
+      return lugar + "el id está repetido.";
+    }
+    if (nombresCategorias.includes(normalizarTexto(categoria.nombre))) {
+      return lugar + "el nombre está repetido.";
+    }
+    idsCategorias.push(categoria.id);
+    nombresCategorias.push(normalizarTexto(categoria.nombre));
+  }
+
+  // --- Productos ---
+  const codigosProductos = [];
+  for (let i = 0; i < datos.productos.length; i++) {
+    const producto = datos.productos[i];
+    const lugar = "producto n.º " + (i + 1) + ": ";
+
+    if (producto === null || typeof producto !== "object") {
+      return lugar + "no es válido.";
+    }
+    if (typeof producto.codigo !== "string" || !/^\d{8,13}$/.test(producto.codigo)) {
+      return lugar + "el código tiene que ser un texto de 8 a 13 dígitos.";
+    }
+    if (codigosProductos.includes(producto.codigo)) {
+      return lugar + "el código está repetido.";
+    }
+    if (!esTextoNoVacio(producto.nombre)) {
+      return lugar + "el nombre es obligatorio.";
+    }
+    if (!idsCategorias.includes(producto.categoriaId)) {
+      return lugar + "su categoría no existe en el archivo.";
+    }
+    if (!esTextoNoVacio(producto.unidad)) {
+      return lugar + "falta la unidad.";
+    }
+    if (typeof producto.precio !== "number" || !(producto.precio > 0)) {
+      return lugar + "el precio tiene que ser un número mayor que cero.";
+    }
+    if (!esEnteroValido(producto.stockInicial) ||
+        !esEnteroValido(producto.stockActual) ||
+        !esEnteroValido(producto.stockMinimo)) {
+      return lugar + "los stocks tienen que ser números enteros de 0 o más.";
+    }
+    codigosProductos.push(producto.codigo);
+  }
+
+  // --- Movimientos ---
+  const idsMovimientos = [];
+  for (let i = 0; i < datos.movimientos.length; i++) {
+    const movimiento = datos.movimientos[i];
+    const lugar = "movimiento n.º " + (i + 1) + ": ";
+
+    if (movimiento === null || typeof movimiento !== "object") {
+      return lugar + "no es válido.";
+    }
+    if (!esEnteroValido(movimiento.id) || idsMovimientos.includes(movimiento.id)) {
+      return lugar + "el id falta o está repetido.";
+    }
+    if (!esTextoNoVacio(movimiento.codigo)) {
+      return lugar + "falta el código del producto.";
+    }
+    if (movimiento.tipo !== "entrada" && movimiento.tipo !== "salida") {
+      return lugar + "el tipo tiene que ser entrada o salida.";
+    }
+    if (!esTextoNoVacio(movimiento.motivo)) {
+      return lugar + "falta el motivo.";
+    }
+    if (!esEnteroValido(movimiento.cantidad) || movimiento.cantidad <= 0) {
+      return lugar + "la cantidad tiene que ser un entero mayor que cero.";
+    }
+    if (typeof movimiento.fecha !== "string" || !esFechaValida(movimiento.fecha)) {
+      return lugar + "la fecha no es válida.";
+    }
+    if (typeof movimiento.observacion !== "string") {
+      return lugar + "la observación tiene que ser un texto (puede estar vacío).";
+    }
+    idsMovimientos.push(movimiento.id);
+  }
+
+  return "";
+}
+
+// Procesa el texto de un archivo: lo lee, lo revisa, pide confirmación y reemplaza los datos.
+// Si algo falla, no se modifica nada. Devuelve true si se importó.
+function importarTexto(texto) {
+  // 1) ¿Es un JSON válido?
+  let datos;
+  try {
+    datos = JSON.parse(texto);
+  } catch (error) {
+    alert("El archivo no es un JSON válido.\n\nNo se modificó ningún dato.");
+    return false;
+  }
+
+  // 2) ¿Tiene las listas y los datos esperados?
+  const errorDeFormato = validarDatosImportados(datos);
+  if (errorDeFormato !== "") {
+    alert("El archivo no sirve: " + errorDeFormato + "\n\nNo se modificó ningún dato.");
+    return false;
+  }
+
+  // 3) Confirmación antes de reemplazar
+  const mensaje = "El archivo tiene " + datos.categorias.length + " categorías, " +
+                  datos.productos.length + " productos y " +
+                  datos.movimientos.length + " movimientos.\n\n" +
+                  "Esto REEMPLAZA todos los datos actuales. ¿Querés continuar?";
+  if (!confirm(mensaje)) {
+    return false;
+  }
+
+  // 4) Reemplazamos, guardando una copia por si falla el guardado
+  const copiaAnterior = { categorias, productos, movimientos };
+  categorias = datos.categorias;
+  productos = datos.productos;
+  movimientos = datos.movimientos;
+
+  try {
+    guardarDatos();
+  } catch (error) {
+    categorias = copiaAnterior.categorias;
+    productos = copiaAnterior.productos;
+    movimientos = copiaAnterior.movimientos;
+    alert("No se pudieron guardar los datos importados.\n\nNo se modificó ningún dato.");
+    return false;
+  }
+
+  // 5) Salimos de cualquier edición en curso y volvemos a dibujar todo
+  cancelarEdicionCategoria();
+  formularioProducto.reset();
+  formularioMovimiento.reset();
+  redibujarTodo();
+
+  alert("Datos importados correctamente.");
+  return true;
+}
+
+// Botón Exportar: descarga stock.json
+botonExportar.addEventListener("click", exportarDatos);
+
+// Botón Importar: abre el selector de archivos (el input está oculto)
+botonImportar.addEventListener("click", function () {
+  archivoImportar.click();
+});
+
+// Cuando se elige un archivo, lo leemos como texto
+archivoImportar.addEventListener("change", function () {
+  const archivo = archivoImportar.files[0];
+  if (!archivo) {
+    return; // no se eligió nada
+  }
+
+  if (archivo.size > TAMANIO_MAXIMO_ARCHIVO) {
+    alert("El archivo es demasiado grande (máximo 5 MB).\n\nNo se modificó ningún dato.");
+    archivoImportar.value = "";
+    return;
+  }
+
+  const lector = new FileReader();
+
+  lector.onload = function () {
+    importarTexto(lector.result);
+    archivoImportar.value = ""; // para poder elegir el mismo archivo otra vez
+  };
+
+  lector.onerror = function () {
+    alert("No se pudo leer el archivo.\n\nNo se modificó ningún dato.");
+    archivoImportar.value = "";
+  };
+
+  lector.readAsText(archivo);
+});
+
+
+// ============================================================
+// 12. ARRANQUE DE LA APLICACIÓN
+// ============================================================
+cargarDatos();
+prepararFechaMovimiento();
+redibujarTodo();
+  </script>
+</body>
+</html>

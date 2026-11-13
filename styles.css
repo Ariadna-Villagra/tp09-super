@@ -1,0 +1,437 @@
+/* ==========================================================
+   Súper Barrio - Hoja de estilos
+   Mobile first: primero el celular, después 768 px en adelante
+   ========================================================== */
+
+/* 1. FUENTES: Poppins (títulos) e Inter (texto) desde Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Poppins:wght@500;600;700&display=swap');
+
+/* 2. VARIABLES: colores, fuentes y medidas que se reutilizan */
+:root {
+  /* Color principal (amarillo mostaza) */
+  --color-principal: #D99A00;
+  --color-principal-oscuro: #B07D00;
+  --color-principal-claro: #FFF4D6;
+
+  /* Fondos y textos */
+  --color-fondo: #F4F5F7;
+  --color-tarjeta: #FFFFFF;
+  --color-texto: #1F2933;
+  --color-texto-suave: #6B7280;
+  --color-borde: #E3E6EA;
+
+  /* Estados del stock */
+  --color-normal: #2E9E5B;        /* verde */
+  --color-bajo: #F28C28;          /* naranja */
+  --color-sin-stock: #D92D20;     /* rojo */
+  --color-normal-claro: #E3F5EA;
+  --color-bajo-claro: #FEEBD6;
+  --color-sin-stock-claro: #FDE4E1;
+
+  /* Tipografías (system-ui por si no hay internet) */
+  --fuente-titulos: "Poppins", system-ui, sans-serif;
+  --fuente-texto: "Inter", system-ui, sans-serif;
+
+  /* Bordes y sombras */
+  --radio: 14px;
+  --sombra-suave: 0 2px 8px rgba(31, 41, 51, 0.08);
+  --sombra-elevada: 0 6px 16px rgba(31, 41, 51, 0.14);
+}
+
+/* 3. BASE: reinicio y estilos generales */
+*,
+*::before,
+*::after {
+  box-sizing: border-box; /* el padding no agranda los elementos */
+}
+
+body {
+  margin: 0;
+  background: var(--color-fondo);
+  color: var(--color-texto);
+  font-family: var(--fuente-texto);
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+h1, h2, h3 {
+  font-family: var(--fuente-titulos);
+  margin: 0 0 0.75rem;
+  line-height: 1.2;
+}
+
+/* Clase para ocultar secciones (la usaremos con JS más adelante) */
+.oculta {
+  display: none;
+}
+
+/* 4. ENCABEZADO */
+#encabezado {
+  background: var(--color-principal);
+  color: #2B1F00;
+  padding: 1.25rem 1rem;
+  box-shadow: var(--sombra-suave);
+}
+
+#encabezado h1 {
+  margin: 0;
+  font-size: 1.75rem;
+}
+
+#encabezado h1::before {
+  content: "🛒 ";
+}
+
+#encabezado p {
+  margin: 0.25rem 0 1rem;
+}
+
+#respaldo {
+  display: flex;
+  gap: 0.5rem;
+}
+
+/* Botones de Exportar e Importar: blancos para que se vean sobre el mostaza */
+#respaldo button {
+  background: #FFFFFF;
+  color: var(--color-texto);
+}
+
+#respaldo button:hover {
+  background: var(--color-principal-claro);
+}
+
+#botonExportar::before { content: "📤 "; }
+#botonImportar::before { content: "📥 "; }
+
+/* El input de archivo se oculta: lo activa el botón Importar con JS */
+#archivoImportar {
+  display: none;
+}
+
+/* 5. MENÚ: 2 columnas en el celular */
+#menu {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.5rem;
+  padding: 1rem;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+#menu button {
+  background: var(--color-tarjeta);
+  color: var(--color-texto);
+  border: 1px solid var(--color-borde);
+}
+
+#menu button:hover {
+  background: var(--color-principal-claro);
+  border-color: var(--color-principal);
+}
+
+/* Botón de la sección activa (le pondremos la clase "activo" con JS) */
+#menu button.activo {
+  background: var(--color-principal);
+  border-color: var(--color-principal);
+}
+
+/* Íconos con emojis en el menú */
+#menu button[data-seccion="productos"]::before   { content: "📦 "; }
+#menu button[data-seccion="movimientos"]::before { content: "🔄 "; }
+#menu button[data-seccion="alertas"]::before     { content: "🔔 "; }
+#menu button[data-seccion="categorias"]::before  { content: "🏷️ "; }
+
+/* Contador de alertas: círculo rojo con número */
+#contadorAlertas {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.5rem;
+  height: 1.5rem;
+  padding: 0 0.35rem;
+  margin-left: 0.4rem;
+  border-radius: 999px;
+  background: var(--color-sin-stock);
+  color: #FFFFFF;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+/* 6. CONTENEDOR PRINCIPAL */
+main {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 1rem 1rem;
+}
+
+section {
+  margin-bottom: 2rem;
+}
+
+/* Íconos en los títulos de cada sección */
+#seccion-productos h2::before   { content: "📦 "; }
+#seccion-movimientos h2::before { content: "🔄 "; }
+#seccion-alertas h2::before     { content: "🔔 "; }
+#seccion-categorias h2::before  { content: "🏷️ "; }
+
+/* 7. FORMULARIOS: tarjetas con bordes redondeados y sombra suave */
+form {
+  display: grid;
+  grid-template-columns: 1fr;   /* una columna en el celular */
+  gap: 1rem;
+  background: var(--color-tarjeta);
+  border-radius: var(--radio);
+  box-shadow: var(--sombra-suave);
+  padding: 1.25rem;
+  margin-bottom: 1.5rem;
+}
+
+label {
+  display: block;
+  font-size: 0.9rem;
+  font-weight: 500;
+  margin-bottom: 0.3rem;
+}
+
+input,
+select,
+textarea {
+  width: 100%;
+  padding: 0.65rem 0.8rem;
+  border: 1px solid var(--color-borde);
+  border-radius: 10px;
+  background: #FFFFFF;
+  color: var(--color-texto);
+  font-family: var(--fuente-texto);
+  font-size: 1rem;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  outline: 2px solid var(--color-principal);
+  outline-offset: 1px;
+  border-color: var(--color-principal);
+}
+
+/* 8. BOTONES con efecto hover (cambio de color y leve elevación) */
+button {
+  padding: 0.7rem 1.2rem;
+  border: none;
+  border-radius: 10px;
+  background: var(--color-principal);
+  color: #2B1F00;
+  font-family: var(--fuente-texto);
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: var(--sombra-suave);
+  transition: background-color 0.2s, transform 0.2s, box-shadow 0.2s;
+}
+
+button:hover {
+  background: var(--color-principal-oscuro);
+  transform: translateY(-2px);
+  box-shadow: var(--sombra-elevada);
+}
+
+button:active {
+  transform: translateY(0);
+}
+
+/* Botón secundario (Limpiar): blanco con borde */
+button[type="reset"] {
+  background: #FFFFFF;
+  color: var(--color-texto);
+  border: 1px solid var(--color-borde);
+}
+
+button[type="reset"]:hover {
+  background: var(--color-principal-claro);
+}
+
+/* 9. FILTROS DE PRODUCTOS: también como tarjeta */
+#filtrosProductos {
+  display: grid;
+  gap: 0.35rem;
+  background: var(--color-tarjeta);
+  border-radius: var(--radio);
+  box-shadow: var(--sombra-suave);
+  padding: 1.25rem;
+  margin-bottom: 1.5rem;
+}
+
+#filtrosProductos label {
+  margin: 0.6rem 0 0;
+}
+
+#filtrosProductos label:first-child {
+  margin-top: 0;
+}
+
+/* 10. TABLAS: con scroll horizontal en el celular */
+table {
+  display: block;
+  overflow-x: auto;
+  border-collapse: separate;
+  border-spacing: 0;
+  background: var(--color-tarjeta);
+  border-radius: var(--radio);
+  box-shadow: var(--sombra-suave);
+}
+
+th {
+  background: var(--color-principal-claro);
+  text-align: left;
+  font-family: var(--fuente-titulos);
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+th,
+td {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--color-borde);
+}
+
+tbody tr:hover {
+  background: #FFFBEF;
+}
+
+/* 11. LISTAS: cada elemento es una tarjeta */
+ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: 1fr;   /* una columna en el celular */
+  gap: 0.75rem;
+}
+
+ul li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--color-tarjeta);
+  border-radius: var(--radio);
+  box-shadow: var(--sombra-suave);
+  padding: 0.9rem 1.1rem;
+}
+
+/* Alertas: borde de color según la gravedad */
+#listaAlertas li {
+  border-left: 6px solid var(--color-bajo);
+}
+
+#listaAlertas li.alerta-bajo      { border-left-color: var(--color-bajo); }
+#listaAlertas li.alerta-sin-stock { border-left-color: var(--color-sin-stock); }
+
+/* 12. INDICADORES DE ESTADO DEL STOCK (los pondrá JS en cada producto) */
+.estado {
+  display: inline-block;
+  padding: 0.2rem 0.7rem;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  font-size: 0.85rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.estado-normal {
+  background: var(--color-normal-claro);
+  border-color: var(--color-normal);
+}
+.estado-normal::before { content: "🟢 "; }
+
+.estado-bajo {
+  background: var(--color-bajo-claro);
+  border-color: var(--color-bajo);
+}
+.estado-bajo::before { content: "🟠 "; }
+
+.estado-sin-stock {
+  background: var(--color-sin-stock-claro);
+  border-color: var(--color-sin-stock);
+}
+.estado-sin-stock::before { content: "🔴 "; }
+
+/* 13. PIE DE PÁGINA */
+footer {
+  text-align: center;
+  color: var(--color-texto-suave);
+  font-size: 0.85rem;
+  padding: 1.5rem 1rem;
+}
+
+/* ==========================================================
+   14. DESDE 768 px: tablet y computadora (dos columnas)
+   ========================================================== */
+@media (min-width: 768px) {
+
+  /* Encabezado con el título a la izquierda y los botones a la derecha */
+  #encabezado {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.25rem 2rem;
+  }
+
+  #encabezado p {
+    margin-bottom: 0;
+  }
+
+  /* Menú en una sola fila de 4 botones */
+  #menu {
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  /* Formularios en dos columnas */
+  form {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  form > button[type="submit"] { grid-column: 1; }
+  form > button[type="reset"]  { grid-column: 2; }
+
+  /* La observación ocupa todo el ancho */
+  #formularioMovimiento > div:has(textarea) {
+    grid-column: 1 / -1;
+  }
+
+  /* El formulario de categorías va en una sola fila */
+  #formularioCategoria {
+    display: flex;
+    align-items: flex-end;
+    gap: 1rem;
+  }
+
+  #formularioCategoria label {
+    margin: 0;
+    white-space: nowrap;
+  }
+
+  /* Filtros: etiqueta a la izquierda y campo a la derecha */
+  #filtrosProductos {
+    grid-template-columns: auto 1fr;
+    align-items: center;
+    gap: 0.75rem 1rem;
+  }
+
+  #filtrosProductos label {
+    margin: 0;
+  }
+
+  /* Listas en dos columnas */
+  ul {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  /* Las tablas ocupan todo el ancho */
+  table {
+    display: table;
+    width: 100%;
+    overflow: hidden;
+  }
+}
